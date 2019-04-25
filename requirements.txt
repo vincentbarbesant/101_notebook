@@ -1,3 +1,4 @@
+octave_kernel
 networkx
 pandas
 plotly
