@@ -10,6 +10,7 @@ def reconstruct_grid(environment,
                      new_layout={},
                      new_label_pos={},
                      replace_dic=False,
+                     size=None,
                      title='test grid'):
 
     # Some definitions.
@@ -209,18 +210,17 @@ def reconstruct_grid(environment,
             labels[idx_nodeid] += str('<br>' + 'TLex{' + str(idx_ex[idx_nodeid_idxex][i]) + '-' + str(pair_nodeid_idxex[i]) + '}' + ' ' + str(num_formatter(obs.active_flows_extremity[idx_nodeid_idxex][i])) + ' MW')
 
     # --------------
-    # Styling nodes.
+    # Styling nodes
+    # -------------
     default_size = 32
     size_nodes = np.ones(len(nodes_ids)) * default_size
     # Make productions nodes a bit bigger.
     size_nodes[np.where(are_prods == True)] = 47
     # Changing color nodes.
-    dflt_color = 'rgb(31,120,180)'
-    color_nodes = np.array([dflt_color] * len(nodes_ids))
+    default_color_nodes = 'rgb(31,120,180)'
+    color_nodes = np.array([default_color_nodes] * len(nodes_ids))
     color_nodes[np.where(are_prods == True)] = 'rgb(227,26,28)'
 
-    #
-    #
     #
     # -------------------
     # Graph recontruction.
@@ -231,7 +231,7 @@ def reconstruct_grid(environment,
     edge_trace = go.Scatter(
         x=[],
         y=[],
-        line=dict(width=1.3, color='#888'),
+        line=dict(width=1.4, color='#888'),
         hoverinfo='text',
         mode='lines')
 
@@ -250,7 +250,7 @@ def reconstruct_grid(environment,
         mode='markers+text',
         hoverinfo='text',
         textposition=list(label_pos.values()),
-        textfont=dict(size=8,
+        textfont=dict(size=9,
                       color='rgb(50,50,50)'),
         marker=dict(
             color=color_nodes,
@@ -279,14 +279,46 @@ def reconstruct_grid(environment,
                                     showarrow=False))
         return annotations
 
+    layout = layout = go.Layout(
+        showlegend=False,
+        margin=dict(b=10, l=5, r=5, t=10),
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+
+    # Modify grid size
+    if size is None:
+        pass
+    else:
+        layout.xaxis['range'] = [-size[0], size[0]]
+        layout.yaxis['range'] = [-size[1], size[1]]
+
     # Make the graph with plotly.
-    fig = go.Figure(data=[edge_trace, node_trace],
-                    layout=go.Layout(
-                        showlegend=False,
-                        margin=dict(b=10, l=5, r=5, t=10),
-                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
+    fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
     # Labels
     fig['layout'].update(annotations=make_annotations(list(pos.values()), nodes_ids))
 
-    return fig
+    # -------------
+    # Coloring edges
+    # -------------
+    # P**2 = (sqrt(3)VI)**2 - Q**2
+    vi = (np.sqrt(3) * obs.voltage_flows_origin * 100 * obs.thermal_limits / 1000)
+    q = obs.reactive_flows_origin
+    P_thermal_limits = np.sqrt(vi**2 - q**2)
+    idx_lines = np.where(np.abs(obs.active_flows_origin) > P_thermal_limits)
+    xx = []
+    yy = []
+
+    for k in idx_lines[0]:
+        xx.extend([fig['data'][0]['x'][3 * k], fig['data'][0]['x'][3 * k + 1], None])
+        yy.extend([fig['data'][0]['y'][3 * k], fig['data'][0]['y'][3 * k + 1], None])
+
+    colored_edges = dict(type='scatter',
+                         mode='line',
+                         line=dict(width=6, color='red'),
+                         x=xx,
+                         y=yy)
+
+    data1 = [colored_edges] + fig['data']
+    fig1 = dict(data=data1, layout=fig['layout'])
+
+    return fig1

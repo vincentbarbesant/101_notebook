@@ -1,11 +1,10 @@
-octave_kernel
 pandas
 plotly
 gym
 setuptools==40.0.0
 matplotlib==2.2.2
 numpy==1.15.0
-oct2py==4.0.6
+oct2py
 pygame==1.9.4
 scipy==1.1.0
 PYPOWER==5.1.4
