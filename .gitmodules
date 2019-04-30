@@ -1,6 +1,0 @@
-[submodule "matpower"]
-	path = matpower
-	url = https://github.com/MATPOWER/matpower
-[submodule "pypownet"]
-	path = pypownet
-	url = https://github.com/MarvinLer/pypownet

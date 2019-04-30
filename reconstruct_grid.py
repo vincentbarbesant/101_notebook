@@ -209,7 +209,10 @@ def reconstruct_grid(environment,
             # Write label for origin lines.
             labels[idx_nodeid] += str('<br>' + 'TLex{' + str(idx_ex[idx_nodeid_idxex][i]) + '-' + str(pair_nodeid_idxex[i]) + '}' + ' ' + str(num_formatter(obs.active_flows_extremity[idx_nodeid_idxex][i])) + ' MW')
 
-    # --------------
+    # ********************
+    # GRAPH RECONSTRUCTION
+    # ********************
+
     # Styling nodes
     # -------------
     default_size = 32
@@ -221,32 +224,34 @@ def reconstruct_grid(environment,
     color_nodes = np.array([default_color_nodes] * len(nodes_ids))
     color_nodes[np.where(are_prods == True)] = 'rgb(227,26,28)'
 
-    #
+    # Graph recontruction
     # -------------------
-    # Graph recontruction.
     G = nx.Graph()
     pos = {key: value for (key, value) in zip(nodes_graph, list(layout.values()))}
 
-    # Edge trace for graph.
+    # Edge trace for graph
+    # --------------------
     edge_trace = go.Scatter(
         x=[],
         y=[],
         line=dict(width=1.4, color='#888'),
-        hoverinfo='text',
+        hoverinfo='none',
         mode='lines')
 
+    # Fill edges information in edge trace
     for edge in edges_graph:
         x0, y0 = pos[edge[0]]
         x1, y1 = pos[edge[1]]
         edge_trace['x'] += tuple([x0, x1, None])
         edge_trace['y'] += tuple([y0, y1, None])
+    # --------------------
 
-# Edge nodes for graph.
+    # Edge nodes for graph
+    # --------------------
     node_trace = go.Scatter(
         x=[],
         y=[],
         text=labels,
-        # text=list(nodes_ids),
         mode='markers+text',
         hoverinfo='text',
         textposition=list(label_pos.values()),
@@ -258,13 +263,15 @@ def reconstruct_grid(environment,
             # colorbar=dict(thickness=15, title='Node Connections', xanchor='left', titleside='right'),
             line=dict(color='rgb(100,100,100)', width=2)))
 
-    # Fill node trace.
+    # Fill node in trace.
     for node in nodes_graph:
         x, y = pos[node]
         node_trace['x'] += tuple([x])
         node_trace['y'] += tuple([y])
+    # --------------------
 
-    # Function to make annotation like node name, etc.
+    # Fill the ids for each node
+    # -------------------------
     def make_annotations(pos, anno_text, font_size=10, font_color='rgb(255,255,255)'):
         L = len(pos)
         if len(anno_text) != L:
@@ -279,25 +286,26 @@ def reconstruct_grid(environment,
                                     showarrow=False))
         return annotations
 
-    layout = layout = go.Layout(
-        showlegend=False,
-        margin=dict(b=10, l=5, r=5, t=10),
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+    # Customize graph layout
+    # ----------------------
+    layout = layout = go.Layout(showlegend=False,
+                                annotations=make_annotations(list(pos.values()), nodes_ids),
+                                margin=dict(b=10, l=5, r=5, t=10),
+                                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
 
-    # Modify grid size
+    # Modify grid size in lyaout
+    # if it is given by the user.
     if size is None:
         pass
     else:
         layout.xaxis['range'] = [-size[0], size[0]]
         layout.yaxis['range'] = [-size[1], size[1]]
 
+    #
     # Make the graph with plotly.
     fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
-    # Labels
-    fig['layout'].update(annotations=make_annotations(list(pos.values()), nodes_ids))
 
-    # -------------
     # Coloring edges
     # -------------
     # P**2 = (sqrt(3)VI)**2 - Q**2
@@ -305,20 +313,15 @@ def reconstruct_grid(environment,
     q = obs.reactive_flows_origin
     P_thermal_limits = np.sqrt(vi**2 - q**2)
     idx_lines = np.where(np.abs(obs.active_flows_origin) > P_thermal_limits)
-    xx = []
-    yy = []
+    xx, yy = [], []
 
     for k in idx_lines[0]:
         xx.extend([fig['data'][0]['x'][3 * k], fig['data'][0]['x'][3 * k + 1], None])
         yy.extend([fig['data'][0]['y'][3 * k], fig['data'][0]['y'][3 * k + 1], None])
 
-    colored_edges = dict(type='scatter',
-                         mode='line',
-                         line=dict(width=6, color='red'),
-                         x=xx,
-                         y=yy)
+    colored_edges = dict(mode='lines', hoverinfo='none', line=dict(width=6, color='red'), x=xx, y=yy)
 
-    data1 = [colored_edges] + fig['data']
+    data1 = [colored_edges] + list(fig['data'])
     fig1 = dict(data=data1, layout=fig['layout'])
 
     return fig1
